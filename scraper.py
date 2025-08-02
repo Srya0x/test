@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 import json
 import requests
 from bs4 import BeautifulSoup
@@ -11,6 +10,23 @@ from zipfile import ZipFile
 HEADERS = {
     "User-Agent": "Mozilla/5.0"
 }
+
+SCRAPINGBEE_API_KEY = "BPMY5N10O84COYP0E813TKJX4CG6TCKHVQKURQZRTU98LJSGQ6N62023WQXZHAYWZONRPSRN9KPURITI"
+
+def fetch_url(url):
+    try:
+        api_url = "https://app.scrapingbee.com/api/v1/"
+        params = {
+            "api_key": SCRAPINGBEE_API_KEY,
+            "url": url,
+            "render_js": "false"
+        }
+        response = requests.get(api_url, headers=HEADERS, params=params, timeout=30)
+        response.raise_for_status()
+        return response
+    except Exception as e:
+        print(f"❌ ScrapingBee error : {e}")
+        return None
 
 def clean_filename(name):
     return re.sub(r'[\\/*?:"<>|]', "", name).replace(" ", "_")
@@ -100,8 +116,10 @@ def get_chapter_links(soup):
 
 def download_chapter(chap_url, folder_name, chap_index):
     try:
-        r = requests.get(chap_url, headers=HEADERS)
-        r.raise_for_status()
+        r = fetch_url(chap_url)
+        if not r:
+            print(f"❌ Erreur téléchargement chapitre {chap_index}")
+            return False
         soup = BeautifulSoup(r.content, "html.parser")
         img_tags = soup.select("div.page-break.no-gaps img")
 
@@ -122,26 +140,23 @@ def download_chapter(chap_url, folder_name, chap_index):
         return False
 
 def zip_folder(folder_name):
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    zip_path = os.path.join(output_dir, f"{folder_name}.zip")
-    with ZipFile(zip_path, "w") as zipf:
+    zip_name = f"{folder_name}.zip"
+    with ZipFile(zip_name, "w") as zipf:
         for root, _, files in os.walk(folder_name):
             for file in files:
                 full_path = os.path.join(root, file)
                 arcname = os.path.relpath(full_path, folder_name)
                 zipf.write(full_path, arcname)
-    print(f"✅ ZIP créé : {zip_path}")
+    print(f"✅ ZIP créé : {zip_name}")
 
 def process_url(url):
     print(f"🔍 Traitement : {url}")
-    try:
-        r = requests.get(url, headers=HEADERS)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.content, "html.parser")
-    except Exception as e:
-        print(f"❌ Erreur HTTP : {e}")
+    r = fetch_url(url)
+    if not r:
+        print("❌ Erreur ScrapingBee")
         return
+
+    soup = BeautifulSoup(r.content, "html.parser")
 
     title_tag = soup.select_one("div.post-title h1")
     if not title_tag:
@@ -173,10 +188,9 @@ def process_url(url):
     zip_folder(folder_name)
 
 def main():
-    print("📁 Contenu du répertoire :", os.listdir("."))
     if not os.path.exists("mangas.txt"):
         print("❌ Fichier mangas.txt manquant")
-        sys.exit(0)
+        return
 
     with open("mangas.txt", "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
