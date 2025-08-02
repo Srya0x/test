@@ -121,7 +121,8 @@ def download_chapter(chap_url, folder_name, chap_index):
         return False
 
 def zip_folder(folder_name):
-    zip_name = f"{folder_name}.zip"
+    os.makedirs("output", exist_ok=True)
+    zip_name = f"output/{folder_name}.zip"
     with ZipFile(zip_name, "w") as zipf:
         for root, _, files in os.walk(folder_name):
             for file in files:
