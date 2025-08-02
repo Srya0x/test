@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 import json
 import requests
 from bs4 import BeautifulSoup
@@ -121,15 +122,16 @@ def download_chapter(chap_url, folder_name, chap_index):
         return False
 
 def zip_folder(folder_name):
-    os.makedirs("output", exist_ok=True)
-    zip_name = f"output/{folder_name}.zip"
-    with ZipFile(zip_name, "w") as zipf:
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    zip_path = os.path.join(output_dir, f"{folder_name}.zip")
+    with ZipFile(zip_path, "w") as zipf:
         for root, _, files in os.walk(folder_name):
             for file in files:
                 full_path = os.path.join(root, file)
                 arcname = os.path.relpath(full_path, folder_name)
                 zipf.write(full_path, arcname)
-    print(f"✅ ZIP créé : {zip_name}")
+    print(f"✅ ZIP créé : {zip_path}")
 
 def process_url(url):
     print(f"🔍 Traitement : {url}")
@@ -171,9 +173,10 @@ def process_url(url):
     zip_folder(folder_name)
 
 def main():
+    print("📁 Contenu du répertoire :", os.listdir("."))
     if not os.path.exists("mangas.txt"):
         print("❌ Fichier mangas.txt manquant")
-        return
+        sys.exit(0)
 
     with open("mangas.txt", "r", encoding="utf-8") as f:
         urls = [line.strip() for line in f if line.strip()]
